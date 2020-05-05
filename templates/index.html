@@ -1,0 +1,176 @@
+<html>
+   <head>
+      <!-- 합쳐지고 최소화된 최신 CSS -->
+      <meta charset="UTF-8">
+       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+
+      <!-- 부가적인 테마 -->
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+
+      <!-- 합쳐지고 최소화된 최신 자바스크립트 -->
+      <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+
+      <script src="https://code.jquery.com/jquery-3.5.0.min.js"></script>
+      <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-app.js"></script>
+       <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-firestore.js"></script>
+
+      <style>
+         .bigPictureWrapper {
+            position: absolute;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            top:0%;
+            width:100%;
+            height:100%;
+            background-color: gray; 
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.9);
+         }
+         .bigPicture {
+            position: relative;
+            display:flex;
+            justify-content: center;
+            align-items: center;
+         }
+         
+         .bigPicture img {
+            width:1000px;
+         }
+      </style>
+
+      <title>Raspberry Pi Security Feed</title>
+   </head>
+
+   <body>
+
+      <div class='bigPictureWrapper'>
+         <div class='bigPicture'></div>
+      </div>
+
+      <div class="container">
+         <div class="header">
+              <nav>
+                <ul class="nav nav-pills pull-right">
+                  <li role="presentation" class="active"><a href="#">Streaming</a></li>
+                  <li role="presentation"><a href="#">About</a></li>
+                  <li role="presentation"><a href="#">Contact</a></li>
+                </ul>
+              </nav>
+              <h2 class="text-muted">Test raspberry pi webcam streaming</h3>
+           </div>
+
+           <hr class="featurette-divider">
+           <div class="row">
+             <div class="col-md-8">
+                <img id="bg" src="{{ url_for('video_feed') }}" class="img-thumbnail">
+                <!--<img id="bg" src="187.jpg" class="img-thumbnail" width="800" height="800">-->
+               </div>
+
+               <div class="col-md-4">
+                  <h3 id="NumberOfDroneOutput">Number of Drone: </h1>
+                    <h4 id="timedate">Date: </h2>
+                        <input type="textfield" id="Num_of_drone" />
+    <button id ="saveButton">Save</button>
+    <button id ="loadButton">Load</button>
+               </div>
+            </div>
+
+            <hr class="featurette-divider">
+
+            <footer>
+              <p class="pull-right"><a href="#">Back to top</a></p>
+              <p>&copy; 2020 HANSUNG.univ &middot; Capstone Design </p>
+          </footer>
+      </div>
+
+   </body>
+
+    <script type="text/javascript">
+      // Your web app's Firebase configuration
+var firebaseConfig = {
+    apiKey: "AIzaSyCwv1H_4608k_iQN6-HHVI2wxrTvxMjvKc",
+    authDomain: "firestore-1add2.firebaseapp.com",
+    databaseURL: "https://firestore-1add2.firebaseio.com",
+    projectId: "firestore-1add2",
+    storageBucket: "firestore-1add2.appspot.com",
+    messagingSenderId: "410516002311",
+    appId: "1:410516002311:web:0c1e7cc41724dca1db3ca2",
+    measurementId: "G-S7ZZZRVQX7"
+  };
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  var firestore = firebase.firestore();
+  
+  //const docRef = firestore.collection("robot1").doc("sky")
+  const docRef = firestore.doc("robot1/sky");
+  const docRef_control = firestore.doc("robot1/control");
+  const outputHeader = document.querySelector("#NumberOfDroneOutput");//불러오기
+  const outputHeader2 = document.querySelector("#timedate"); //불러오기
+  const inputTextField = document.querySelector("#Num_of_drone"); //첫번째빈칸 불러오기
+
+  const saveButton = document.querySelector("#saveButton") //저장버튼
+  const loadButton = document.querySelector("#loadButton") //불러오기버튼
+
+
+//저장버튼 누르면 
+  saveButton.addEventListener("click", function() {
+      const textToSave = inputTextField.value;
+      console.log("I am going to save" + textToSave + "to Firestore")
+      docRef.set({
+        Num_of_drone: textToSave
+      }).then(function(){
+          console.log("Number saved!");
+      }).catch(function(error){
+          console.log("Got an error:", error);
+      });
+  });
+//불러오기버튼 누르면
+  loadButton.addEventListener("click", function(){
+      docRef.get().then(function (doc) {
+          if (doc && doc.exists) {
+              const myData = doc.data();
+              outputHeader.innerText = "Number of Drone: " + myData.Num_of_drone;
+          }
+      }).catch(function (error) {
+          console.log("Got an error: ", error);
+      });
+  });
+
+  getRealtimeUpdates = function() {
+      docRef.onSnapshot(function (doc) {
+        if (doc && doc.exists) {
+            const myData = doc.data();
+            outputHeader.innerText = "Number of Drone: " + myData.Num_of_drone;
+            outputHeader2.innerText = "Date: " + myData.date;
+        }
+      });
+  }
+
+  getRealtimeUpdates();
+   </script>
+
+   <script type="text/javascript">
+      $(document).ready(function (e){
+         
+         $(document).on("click","img",function(){
+            var path = $(this).attr('src')
+            showImage(path);
+         });//end click event
+         
+         function showImage(fileCallPath){
+             
+             $(".bigPictureWrapper").css("display","flex").show();
+             
+             $(".bigPicture")
+             .html("<img src='"+fileCallPath+"' >")
+             
+           }//end fileCallPath
+           
+         $(".bigPictureWrapper").on("click", function(e){
+             $('.bigPictureWrapper').hide();
+           });//end bigWrapperClick event
+      });
+   </script>
+</html>
