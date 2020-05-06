@@ -44,7 +44,9 @@ parser.add_argument('--labels', help='Name of the labelmap file, if different th
 parser.add_argument('--threshold', help='Minimum confidence threshold for displaying detected objects',
                     default=0.5)
 parser.add_argument('--resolution', help='Desired webcam resolution in WxH. If the webcam does not support the resolution entered, errors may occur.',
-                    default='760x480')
+                    default='800x600')
+parser.add_argument('--savedir', help='saveimage folder',
+                    default='DroneImg')
 parser.add_argument('--edgetpu', help='Use Coral Edge TPU Accelerator to speed up detection',
                     action='store_true')
 
@@ -56,6 +58,7 @@ LABELMAP_NAME = args.labels
 min_conf_threshold = float(args.threshold)
 resW, resH = args.resolution.split('x')
 imW, imH = int(resW), int(resH)
+imgfolder = args.savedir
 use_TPU = args.edgetpu
 
 # Import TensorFlow libraries
@@ -92,9 +95,6 @@ with open(PATH_TO_LABELS, 'r') as f:
 
 # Have to do a weird fix for label map if using the COCO "starter model" from
 # https://www.tensorflow.org/lite/models/object_detection/overview
-# First label is '???', which has to be removed.
-if labels[0] == '???':
-    del(labels[0])
 
 # Load the Tensorflow Lite model.
 # If using Edge TPU, use special load_delegate argument
@@ -130,6 +130,7 @@ def gen(videostream):
     frame_rate_calc = 1
     freq = cv2.getTickFrequency()
     dnum=0
+    capture_drone=0
     time_appear_drone = 0
     zero_count=0
     rectangule_color = (10, 255, 0)
@@ -137,13 +138,13 @@ def gen(videostream):
     while True:
         t1 = cv2.getTickCount()
         D=0
-        distance = 0
-        
+        distance = 0        
         if videostream.stopped:
             break
         
         frame1 = videostream.read()
         frame = frame1.copy()
+        capimg = frame1.copy()
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame_resized = cv2.resize(frame_rgb, (width, height))
         input_data = np.expand_dims(frame_resized, axis=0)
@@ -218,8 +219,9 @@ def gen(videostream):
         
         
         if len(num) == 0:
-            time_appear_drone -= 1
+            time_appear_drone = 0
             zero_count += 1
+            capture_drone=0
             if zero_count == 10:
                 doc_ref_drone = db.collection(u'robot1').document(u'sky')
                 doc_ref_drone.set({
@@ -233,6 +235,7 @@ def gen(videostream):
             rectangule_color = (0,0,255)
             boxthickness = 7
             zero_count=0
+            capture_drone += 1
             if dnum != len(num):
                 dnum=len(num)
                 doc_ref_drone = db.collection(u'robot1').document(u'sky')
@@ -251,6 +254,17 @@ def gen(videostream):
             
         if time_appear_drone < 0:
             time_appear_drone = 0
+            
+        if capture_drone == 30:
+            cv2.imwrite(imgfolder +'/' + 'D'+ str(y)+str(mo)+str(d)+str(h)+str(mi)+ '.jpg', capimg)
+            time.sleep(0.1)
+            capture_drone=0
+            print(imgfolder +'/' + 'D'+ str(y)+str(mo)+str(d)+str(h)+str(mi)+ '.jpg')
+            print('======================saveIMG=================')
+            
+    
+        if capture_drone>18 and capture_drone<=20:
+            cv2.putText(frame,'Drone IMG Saved',(600,550),cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,255),2,cv2.LINE_AA)
         
         text = "NoD is : {} ".format(len(num))        
         cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(10,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
@@ -280,6 +294,7 @@ if __name__ == '__main__':
 
     
     
+
 
 
 
