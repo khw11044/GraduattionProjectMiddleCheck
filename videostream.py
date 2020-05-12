@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 class VideoStream:
-    def __init__(self,resolution=(640,480),framerate=30):
+    def __init__(self,resolution=(800,600),framerate=30):
         print("init")
         self.stream = cv2.VideoCapture(0)
         (self.grabbed, self.frame) = self.stream.read()

@@ -6,7 +6,7 @@ import sys
 #from mail import sendEmail
 from flask import Flask, render_template, Response
 from videostream import VideoStream
-from motor import Turret
+from motor import StepMotor
 from flask_basicauth import BasicAuth
 import time
 import threading
@@ -43,9 +43,9 @@ parser.add_argument('--graph', help='Name of the .tflite file, if different than
 parser.add_argument('--labels', help='Name of the labelmap file, if different than labelmap.txt',
                     default='labelmap.txt')
 parser.add_argument('--threshold', help='Minimum confidence threshold for displaying detected objects',
-                    default=0.5)
+                    default=0.8)
 parser.add_argument('--resolution', help='Desired webcam resolution in WxH. If the webcam does not support the resolution entered, errors may occur.',
-                    default='800x600')
+                    default='640x480')
 parser.add_argument('--savedir', help='saveimage folder',
                     default='DroneImg')
 parser.add_argument('--edgetpu', help='Use Coral Edge TPU Accelerator to speed up detection',
@@ -135,7 +135,13 @@ def gen(videostream):
     time_appear_drone = 0
     zero_count=0
     rectangule_color = (10, 255, 0)
-    t = Turret()
+    frame1 = videostream.read()
+    rows, cols, _ = frame1.shape
+    x_medium = int(cols / 2)
+    x_center = int(cols / 2)
+    y_medium = int(rows / 2)
+    y_center = int(rows / 2)
+    t = StepMotor()
     while True:
         t1 = cv2.getTickCount()
         D=0
@@ -170,7 +176,7 @@ def gen(videostream):
         y = str(now.tm_year)
         mo = str(now.tm_mon)
         d = str(now.tm_mday)
-        h = str(now.tm_hour)
+        h = str(now.tm_hour+9)
         mi = str(now.tm_min)
         date =str(y)+'/'+str(mo)+'/'+str(d)+'/'+str(h)+'/'+str(mi)
         boxthickness = 3
@@ -189,7 +195,7 @@ def gen(videostream):
                 cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), rectangule_color, boxthickness)
                 time_appear_drone = time_appear_drone + 1
                 
-                if scores[i] > 0.4:
+                if scores[i] > 0.7:
                     num.append(scores[i])
                     
                 
@@ -205,8 +211,7 @@ def gen(videostream):
                     cv2.line(frame, (0, y_medium), (1280, y_medium), (10, 255, 0), linethickness)
                     D = lw-lx
                     distance = float(-(3/35)*D+90)
-                
-                
+                               
                 # Draw label
                 object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
                 label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
@@ -224,11 +229,13 @@ def gen(videostream):
             zero_count += 1
             capture_drone=0
             if zero_count == 10:
+                start_time = time.time()
                 doc_ref_drone = db.collection(u'robot1').document(u'sky')
                 doc_ref_drone.set({
                 u'Num_of_drone': 0,
                 u'date' : date
                 })
+                
             if zero_count == 500:
                 zero_count=0
                         
@@ -257,11 +264,11 @@ def gen(videostream):
             time_appear_drone = 0
             
         if capture_drone == 30:
-            cv2.imwrite(imgfolder +'/' + 'D'+ str(y)+str(mo)+str(d)+str(h)+str(mi)+ '.jpg', capimg)
-            time.sleep(0.1)
+            #cv2.imwrite(imgfolder +'/' + 'D'+ str(y)+str(mo)+str(d)+str(h)+str(mi)+ '.jpg', capimg)
+            #time.sleep(0.1)
             capture_drone=0
-            print(imgfolder +'/' + 'D'+ str(y)+str(mo)+str(d)+str(h)+str(mi)+ '.jpg')
-            print('======================saveIMG=================')
+            #print(imgfolder +'/' + 'D'+ str(y)+str(mo)+str(d)+str(h)+str(mi)+ '.jpg')
+            #print('======================saveIMG=================')
             
     
         if capture_drone>18 and capture_drone<=20:
@@ -273,7 +280,14 @@ def gen(videostream):
         cv2.putText(frame,'Distance: {0:.1f}cm'.format(distance),(10,80),cv2.FONT_HERSHEY_COMPLEX_SMALL,1,(255,255,0),2,cv2.LINE_AA)
         cv2.putText(frame,'DAY: ' + date,(15,460),cv2.FONT_HERSHEY_COMPLEX_SMALL,1,(255,255,0),1,cv2.LINE_AA)
         
-    
+        
+        if x_medium < x_center - 20:
+            print('Move Left')
+            t.left()
+        elif x_medium > x_center + 20:
+            print('Move Right')
+            t.right()
+            
         ret, jpeg = cv2.imencode('.jpg',frame)
         if jpeg is not None:
             yield (b'--frame\r\n'
@@ -295,6 +309,7 @@ if __name__ == '__main__':
 
     
     
+
 
 
 

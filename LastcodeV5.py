@@ -13,8 +13,7 @@
 #
 # I added my own method of drawing boxes and labels using OpenCV.
 
-import atexit
-
+# Import packages
 import termios
 import contextlib
 import imutils
@@ -29,10 +28,6 @@ import sys
 import time
 from threading import Thread
 import importlib.util
-import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import firestore
-from firebase_admin import storage
 from videostream import VideoStream
 from motor import Turret
 
@@ -48,7 +43,7 @@ parser.add_argument('--labels', help='Name of the labelmap file, if different th
 parser.add_argument('--threshold', help='Minimum confidence threshold for displaying detected objects',
                     default=0.5)
 parser.add_argument('--resolution', help='Desired webcam resolution in WxH. If the webcam does not support the resolution entered, errors may occur.',
-                    default='1280x720')
+                    default='800x600')
 parser.add_argument('--edgetpu', help='Use Coral Edge TPU Accelerator to speed up detection',
                     action='store_true')
 
@@ -57,9 +52,10 @@ args = parser.parse_args()
 MODEL_NAME = args.modeldir
 GRAPH_NAME = args.graph
 LABELMAP_NAME = args.labels
-min_conf_threshold =0.5
+min_conf_threshold = float(args.threshold)
 resW, resH = args.resolution.split('x')
 imW, imH = int(resW), int(resH)
+print(imW,imH)
 use_TPU = args.edgetpu
 
 # Import TensorFlow libraries
@@ -105,7 +101,7 @@ if labels[0] == '???':
 if use_TPU:
     interpreter = Interpreter(model_path=PATH_TO_CKPT,
                               experimental_delegates=[load_delegate('libedgetpu.so.1.0')])
-    #print(PATH_TO_CKPT)
+    print(PATH_TO_CKPT)
 else:
     interpreter = Interpreter(model_path=PATH_TO_CKPT)
 
@@ -126,19 +122,24 @@ input_std = 127.5
 frame_rate_calc = 1
 freq = cv2.getTickFrequency()
 
+
 dnum=0
-capture_drone=0
 time_appear_drone = 0
-zero_count=0
 boxthickness = 3
 linethickness = 2
-# Initialize video stream
-videostream = VideoStream(resolution=(800,600),framerate=30).start()
-time.sleep(1)
-print(videostream.read().shape)
 rectangule_color = (10, 255, 0)
+# Initialize video stream
+videostream = VideoStream(resolution=(imW,imH),framerate=30).start()
+time.sleep(1)
+
+frame1 = videostream.read()
+rows, cols, _ = frame1.shape
+print(frame1.shape)
+x_medium = int(cols / 2)
+x_center = int(cols / 2)
+y_medium = int(rows / 2)
+y_center = int(rows / 2)
 t = Turret()
-#for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 while True:
 
     # Start timer (for calculating frame rate)
@@ -191,7 +192,6 @@ while True:
             cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), rectangule_color, boxthickness)  #xmax = x+w ymax = y+h 
             time_appear_drone = time_appear_drone + 1
             
-            print('scores',scores)
             if scores[i] > 0.4:
                 num.append(scores[i])
                 #print('num',num)
@@ -204,8 +204,8 @@ while True:
                 lh = int(min(imH,(boxes[most][2] * imH)))
                 x_medium = int((lx+lw)/2)
                 y_medium = int((ly+lh)/2)
-                cv2.line(frame, (x_medium, 0), (x_medium, 480), (10, 255, 0), linethickness)
-                cv2.line(frame, (0, y_medium), (640, y_medium), (10, 255, 0), linethickness)
+                cv2.line(frame, (x_medium, 0), (x_medium, 1280), (10, 255, 0), linethickness)
+                cv2.line(frame, (0, y_medium), (960, y_medium), (10, 255, 0), linethickness)
                 d = lw-lx
                 distance = float(-(3/35)*d+90)
 
@@ -218,16 +218,14 @@ while True:
             cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
             cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
             
-    
+    print('x_medium',x_medium)
+    print('y_medium',y_medium)
     if time_appear_drone > 10:
         rectangule_color = (0,0,255)
         boxthickness = 7
-        capture_drone += 1
         if dnum != len(num):
             dnum=len(num)
-            
-            #print('sending data',dnum)
-        
+            #print('sending data',dnum)      
     else :
         rectangule_color = (10, 255, 0)
         thickness = 3
@@ -235,39 +233,12 @@ while True:
     
     if len(num) == 0:
         time_appear_drone = 0
-
+        x_medium=320
+        y_medium=240
+            #print('sendfirebasevalue 0')  #once
             
     if time_appear_drone <= 0:
         time_appear_drone=0
-    
-    date =str(y)+str(mo)+str(d)+str(h)+str(mi)
-    reimage = cv2.resize(capframe,(800,600))
-    
-    if capture_drone == 20:
-        cv2.imwrite(imgfolder +'/' + 'D'+ date + '.jpg', reimage)
-        f = open(imgfolder+'/'+'D'+ date +".xml", 'w')
-        time.sleep(0.1)
-        f.write('<annotation>\n\t<folder>'+imgfolder+'</folder>\n')
-        f.write('\t<filename>'+date+'</filename>\n<path>imgfolder.jpg</path>\n')
-        f.write('\t<source>\n\t/t<database>Unknown</database>\n\t</source>\n')
-        f.write('\t<size>\n\t\t<width>800</width>\n\t\t<height>600</height>\n')
-        f.write('\t\t<depth>3</depth>\n\t</size>\n\t<segmented>0</segmented>\n')
-        f.write('\t<object>\n\t\t<name>Drone</name>\n\t\t<pose>Unspecified</pose>\n')
-        f.write('\t/t<truncated>0</truncated>\n\t\t<difficult>0</difficult>\n')
-        f.write('\t\t<bndbox>\n\t\t\t<xmin>'+str(lx)+'</xmin>\n')
-        f.write('\t\t\t<ymin>'+str(ly)+'</ymin>\n')
-        f.write('\t\t\t<xmax>'+str(lw)+'</xmax>\n')
-        f.write('\t\t\t<ymax>'+str(lh)+'</ymax>\n')
-        f.write('\t\t</bndbox>\n\t</object>\n</annotation>')
-        time.sleep(0.1)
-        f.close
-        #print("succese")
-        #print('saved_image++++++++++++++++++++++++++++++++++++')
-        capture_drone=0
-    
-    if capture_drone>18 and capture_drone<=20:
-        cv2.putText(frame,'Drone IMG Saved',(600,650),cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,255),2,cv2.LINE_AA)
-    
     
     
     if distance < 0:
@@ -291,10 +262,18 @@ while True:
     # Press 'q' to quit
     if cv2.waitKey(1) == ord('q'):
         break
-
+    
+    if x_medium < x_center - 20:
+        print('Move Left')
+        t.left()
+    elif x_medium > x_center + 20:
+        t.right()
+        print('Move Right')
+    
 # Clean up
 cv2.destroyAllWindows()
 videostream.stop()
+
 
 
 

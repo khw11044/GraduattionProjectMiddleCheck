@@ -6,7 +6,7 @@ import sys
 #from mail import sendEmail
 from flask import Flask, render_template, Response
 from videostream import VideoStream
-from motor import Turret
+from motor import StepMotor
 from flask_basicauth import BasicAuth
 import time
 import threading
@@ -45,7 +45,7 @@ parser.add_argument('--labels', help='Name of the labelmap file, if different th
 parser.add_argument('--threshold', help='Minimum confidence threshold for displaying detected objects',
                     default=0.5)
 parser.add_argument('--resolution', help='Desired webcam resolution in WxH. If the webcam does not support the resolution entered, errors may occur.',
-                    default='800x600')
+                    default='640x480')
 parser.add_argument('--savedir', help='saveimage folder',
                     default='DroneImg')
 parser.add_argument('--edgetpu', help='Use Coral Edge TPU Accelerator to speed up detection',
@@ -131,11 +131,18 @@ def gen(videostream):
     frame_rate_calc = 1
     freq = cv2.getTickFrequency()
     dnum=0
+    state=0
     capture_drone=0
     time_appear_drone = 0
     zero_count=0
     rectangule_color = (10, 255, 0)
-    t = Turret()
+    frame1 = videostream.read()
+    rows, cols, _ = frame1.shape
+    x_medium = int(cols / 2)
+    x_center = int(cols / 2)
+    y_medium = int(rows / 2)
+    y_center = int(rows / 2)
+    t = StepMotor()
     while True:
         t1 = cv2.getTickCount()
         D=0
@@ -164,7 +171,7 @@ def gen(videostream):
         classes = interpreter.get_tensor(output_details[1]['index'])[0] # Class index of detected objects
         scores = interpreter.get_tensor(output_details[2]['index'])[0] # Confidence of detected objects
         #num = interpreter.get_tensor(output_details[3]['index'])[0]  # Total number of detected objects (inaccurate and not needed)
-        
+        motorstate=0
         num = []
         now = time.gmtime(time.time())
         y = str(now.tm_year)
@@ -205,8 +212,7 @@ def gen(videostream):
                     cv2.line(frame, (0, y_medium), (1280, y_medium), (10, 255, 0), linethickness)
                     D = lw-lx
                     distance = float(-(3/35)*D+90)
-                
-                
+                               
                 # Draw label
                 object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
                 label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
@@ -229,7 +235,11 @@ def gen(videostream):
                 u'Num_of_drone': 0,
                 u'date' : date
                 })
-            if zero_count == 500:
+            if zero_count == 50:
+                doc_ref_drone = db.collection(u'robot1').document(u'control')
+                doc_ref_drone.set({
+                u'state': 0
+                })
                 zero_count=0
                         
         if time_appear_drone > 10:
@@ -257,8 +267,8 @@ def gen(videostream):
             time_appear_drone = 0
             
         if capture_drone == 30:
-            cv2.imwrite(imgfolder +'/' + 'D'+ str(y)+str(mo)+str(d)+str(h)+str(mi)+ '.jpg', capimg)
-            time.sleep(0.1)
+            #cv2.imwrite(imgfolder +'/' + 'D'+ str(y)+str(mo)+str(d)+str(h)+str(mi)+ '.jpg', capimg)
+            #time.sleep(0.1)
             capture_drone=0
             print(imgfolder +'/' + 'D'+ str(y)+str(mo)+str(d)+str(h)+str(mi)+ '.jpg')
             print('======================saveIMG=================')
@@ -273,7 +283,24 @@ def gen(videostream):
         cv2.putText(frame,'Distance: {0:.1f}cm'.format(distance),(10,80),cv2.FONT_HERSHEY_COMPLEX_SMALL,1,(255,255,0),2,cv2.LINE_AA)
         cv2.putText(frame,'DAY: ' + date,(15,460),cv2.FONT_HERSHEY_COMPLEX_SMALL,1,(255,255,0),1,cv2.LINE_AA)
         
-    
+        
+        if x_medium < x_center - 20:
+            motorstate=1
+            #print('Move Left')
+        elif x_medium > x_center + 20:
+            motorstate=2
+            #print('Move Right')
+        else:
+            motorstate=0
+            
+        if state != motorstate:
+            state = motorstate
+            doc_ref_drone = db.collection(u'robot1').document(u'control')
+            doc_ref_drone.set({
+            u'state': state
+            })
+            
+            
         ret, jpeg = cv2.imencode('.jpg',frame)
         if jpeg is not None:
             yield (b'--frame\r\n'
@@ -295,6 +322,8 @@ if __name__ == '__main__':
 
     
     
+
+
 
 
 
