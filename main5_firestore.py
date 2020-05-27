@@ -135,14 +135,22 @@ def gen(videostream):
     capture_drone=0
     time_appear_drone = 0
     zero_count=0
+    leftmotor_count=0
+    rightmotor_count=0
     rectangule_color = (10, 255, 0)
     frame1 = videostream.read()
     rows, cols, _ = frame1.shape
+    print(frame1.shape)
     x_medium = int(cols / 2)
     x_center = int(cols / 2)
     y_medium = int(rows / 2)
     y_center = int(rows / 2)
     t = StepMotor()
+    doc_ref_drone = db.collection(u'robot1').document(u'control')
+    doc_ref_drone.set({
+    u'left_right': state,
+    u'up_down': 0
+    })
     while True:
         t1 = cv2.getTickCount()
         D=0
@@ -182,6 +190,7 @@ def gen(videostream):
         date =str(y)+'/'+str(mo)+'/'+str(d)+'/'+str(h)+'/'+str(mi)
         boxthickness = 3
         linethickness = 2
+        print("dnum",dnum)
         
         for i in range(len(scores)):
             if ((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
@@ -208,10 +217,11 @@ def gen(videostream):
                     lh = int(min(imH,(boxes[most][2] * imH)))
                     x_medium = int((lx+lw)/2)
                     y_medium = int((ly+lh)/2)
-                    cv2.line(frame, (x_medium, 0), (x_medium, 720), (10, 255, 0), linethickness)
-                    cv2.line(frame, (0, y_medium), (1280, y_medium), (10, 255, 0), linethickness)
+                    cv2.line(frame, (x_medium, 0), (x_medium, 480), (10, 255, 0), linethickness)
+                    cv2.line(frame, (0, y_medium), (640, y_medium), (10, 255, 0), linethickness)
                     D = lw-lx
                     distance = float(-(3/35)*D+90)
+                    
                                
                 # Draw label
                 object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
@@ -229,18 +239,16 @@ def gen(videostream):
             time_appear_drone = 0
             zero_count += 1
             capture_drone=0
+            motorstate=0
+            dnum = 0
             if zero_count == 10:
                 doc_ref_drone = db.collection(u'robot1').document(u'sky')
                 doc_ref_drone.set({
                 u'Num_of_drone': 0,
                 u'date' : date
                 })
-            if zero_count == 50:
-                doc_ref_drone = db.collection(u'robot1').document(u'control')
-                doc_ref_drone.set({
-                u'state': 0
-                })
                 zero_count=0
+
                         
         if time_appear_drone > 10:
             rectangule_color = (0,0,255)
@@ -254,10 +262,12 @@ def gen(videostream):
                 u'Num_of_drone': len(num),
                 u'date' : date
                 })
+                print("sending dnum to firebase")
                 
         else :
             rectangule_color = (10, 255, 0)
             thickness = 3
+            
         
         
         if distance < 0:
@@ -284,23 +294,38 @@ def gen(videostream):
         cv2.putText(frame,'DAY: ' + date,(15,460),cv2.FONT_HERSHEY_COMPLEX_SMALL,1,(255,255,0),1,cv2.LINE_AA)
         
         
-        if x_medium < x_center - 20:
-            motorstate=1
+        if x_medium < x_center - 50:
+            #leftmotor_count = leftmotor_count + 1
+            #motorstate = -leftmotor_count
+            #motorstate = 1
+            motorstate = motorstate -1
+            print('left')
+            
             #print('Move Left')
-        elif x_medium > x_center + 20:
-            motorstate=2
+        elif x_medium > x_center + 50:
+            #rightmotor_count = rightmotor_count + 1
+            #motorstate = rightmotor_count
+            #motorstate = -1
+            motorstate = motorstate + 1
+            print('right')
+            
+            
             #print('Move Right')
         else:
             motorstate=0
-            
+            print('none')
+        
+        print("motorstate",motorstate)
         if state != motorstate:
             state = motorstate
             doc_ref_drone = db.collection(u'robot1').document(u'control')
             doc_ref_drone.set({
-            u'state': state
+            u'left_right': state,
+            u'up_down': 0
             })
-            
-            
+            motorstate=0
+        print("state",state)
+          
         ret, jpeg = cv2.imencode('.jpg',frame)
         if jpeg is not None:
             yield (b'--frame\r\n'

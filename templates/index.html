@@ -40,7 +40,7 @@
          }
       </style>
 
-      <title>Raspberry Pi Security Feed</title>
+      <title>A.I. Anti-Drone Security Feed</title>
    </head>
 
    <body>
@@ -58,7 +58,7 @@
                   <li role="presentation"><a href="#">Contact</a></li>
                 </ul>
               </nav>
-              <h2 class="text-muted">Test raspberry pi webcam streaming</h3>
+              <h2 class="text-muted">A.I. Anti-Drone Security streaming</h3>
            </div>
 
            <hr class="featurette-divider">
@@ -72,8 +72,34 @@
                   <h3 id="NumberOfDroneOutput">Number of Drone: </h1>
                     <h4 id="timedate">Date: </h2>
                         <input type="textfield" id="Num_of_drone" />
-    <button id ="saveButton">Save</button>
-    <button id ="loadButton">Load</button>
+		<div class="controller">
+        	<table>
+            	<caption>controlrobot</caption>
+		    	<tr>
+		            <td><input class="button" type="button" value="-" ></td>
+		            <td><input class="button" type="button" value="U" id="UPButton"onclick="insert_tilt('+'+1);equal_tilt()"></td>
+		            <td><input class="button" type="button" value="-" ></td>
+		    	</tr>
+		    <tr>
+		        <td><input class="button" type="button" value="L" id="LEFTButton" onclick="insert_pan(-1);equal_pan()"></td>
+		        <td><input class="button" type="button" value="C" id="initButton" onclick="init()" ></td>
+		        <td><input class="button" type="button" value="R" id="RIGHTButton" onclick="insert_pan('+'+1);equal_pan()"></td>
+		    </tr>
+		    <tr>
+		        <td><input class="button" type="button" value="-"></td>
+		        <td><input class="button" type="button" value="D" id="DOWNButton" onclick="insert_tilt(-1);equal_tilt()"></td>
+		        <td><input class="button" type="button" value="-"></td>
+		    </tr>       
+        	</table>
+		<caption>pan</caption>
+		<form name = "pan" name="pan" id=pan>
+		    <input type="panview" name="panview" id="panview">
+		</form>
+		<caption>tilt</caption>
+		<form name = "tilt" name="tilt" id=tilt>
+		    <input type="tiltview" name="tiltview" id="tiltview">
+		</form>
+    		</div>
                </div>
             </div>
 
@@ -110,33 +136,93 @@ var firebaseConfig = {
   const outputHeader2 = document.querySelector("#timedate"); //불러오기
   const inputTextField = document.querySelector("#Num_of_drone"); //첫번째빈칸 불러오기
 
-  const saveButton = document.querySelector("#saveButton") //저장버튼
-  const loadButton = document.querySelector("#loadButton") //불러오기버튼
 
+  const UPButton = document.querySelector("#UPButton")     //UP 업버튼
+  const DOWNButton = document.querySelector("#DOWNButton") //DOWN 다운 버튼 tilt
+  const inputTiltValue = document.querySelector("#tiltview")    //tilt
+  const outputTiltValue = document.querySelector("#tiltview")
 
-//저장버튼 누르면 
-  saveButton.addEventListener("click", function() {
-      const textToSave = inputTextField.value;
-      console.log("I am going to save" + textToSave + "to Firestore")
-      docRef.set({
-        Num_of_drone: textToSave
-      }).then(function(){
-          console.log("Number saved!");
-      }).catch(function(error){
-          console.log("Got an error:", error);
-      });
-  });
-//불러오기버튼 누르면
-  loadButton.addEventListener("click", function(){
-      docRef.get().then(function (doc) {
-          if (doc && doc.exists) {
-              const myData = doc.data();
-              outputHeader.innerText = "Number of Drone: " + myData.Num_of_drone;
-          }
-      }).catch(function (error) {
-          console.log("Got an error: ", error);
-      });
-  });
+  const LEFTButton = document.querySelector("#LEFTButton")  //LEFT 왼쪽버튼
+  const RIGHTButton = document.querySelector("#RIGHTButton")//RIGHT 오른쪽 버튼
+  const inputPanValue = document.querySelector("#panview")      //pan
+  const outputPanValue = document.querySelector("#panview")
+
+  const initButton = document.querySelector("#initButton")
+
+//센터버튼 누르면 
+initButton.addEventListener("click", function() {
+    const state_tilt = inputTiltValue.value;
+    const state_pan = inputPanValue.value;
+    console.log("I am going to save" + state_tilt +"and" + state_pan + "to Firestore")
+    docRef_control.set({
+        up_down: 0,
+        left_right: 0,
+	left_rightcontrol : 0
+    }).then(function(){
+        console.log("init state of pan and tilt!");
+    }).catch(function(error){
+        console.log("Got an error of pan and tilt:", error);
+    });
+});  
+//업버튼 누르면 
+UPButton.addEventListener("click", function() {
+    const state_tilt = inputTiltValue.value;
+    const state_pan = inputPanValue.value;
+    console.log("I am going to save" + state_tilt +"and" + state_pan + "to Firestore")
+    docRef_control.set({
+        up_down: state_tilt,
+        left_right: state_pan
+    }).then(function(){
+        console.log("change state of tilt!");
+    }).catch(function(error){
+        console.log("Got an error of tilt:", error);
+    });
+    
+});
+//다운버튼 누르면 
+DOWNButton.addEventListener("click", function() {
+    const state_tilt = inputTiltValue.value;
+    const state_pan = inputPanValue.value;
+    console.log("I am going to save" + state_tilt +"and" + state_pan + "to Firestore")
+    docRef_control.set({
+        up_down: state_tilt,
+        left_right: state_pan
+    }).then(function(){
+        console.log("change state of tilt!");
+    }).catch(function(error){
+        console.log("Got an error of tilt:", error);
+    });
+});
+//왼쪽버튼 누르면 
+LEFTButton.addEventListener("click", function() {
+    const state_tilt = inputTiltValue.value;
+    const state_pan = inputPanValue.value;
+    console.log("I am going to save" + state_tilt +"and" + state_pan + "to Firestore")
+    docRef_control.set({
+        up_down: 0,
+        left_rightcontrol: -1
+    }).then(function(){
+        console.log("change state of pan!");
+    }).catch(function(error){
+        console.log("Got an error of pan:", error);
+    });
+    
+});
+//오른쪽버튼 누르면 
+RIGHTButton.addEventListener("click", function() {
+    const state_tilt = inputTiltValue.value;
+    const state_pan = inputPanValue.value;
+    console.log("I am going to save" + state_tilt +"and" + state_pan + "to Firestore")
+    docRef_control.set({
+        up_down: 0,
+        left_rightcontrol: 1
+    }).then(function(){
+        console.log("change state of pan!");
+    }).catch(function(error){
+        console.log("Got an error of pan:", error);
+    });
+    
+});
 
   getRealtimeUpdates = function() {
       docRef.onSnapshot(function (doc) {

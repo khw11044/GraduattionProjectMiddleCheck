@@ -15,8 +15,8 @@ from Adafruit_MotorHAT import Adafruit_MotorHAT, Adafruit_DCMotor, Adafruit_Step
 MOTOR_X_REVERSED = False
 MOTOR_Y_REVERSED = False
 
-MAX_STEPS_X = 30
-MAX_STEPS_Y = 15
+MAX_STEPS_X = 200
+MAX_STEPS_Y = 500
 
 RELAY_PIN = 22
 
@@ -51,13 +51,13 @@ class StepMotor():
         atexit.register(self.__turn_off_motors)
 
         # Stepper motor 1
-        self.sm_x = self.mh.getStepper(200, 1)      # 200 steps/rev, motor port #1
-        self.sm_x.setSpeed(5)                       # 5 RPM
+        self.sm_x = self.mh.getStepper(300, 1)      # 200 steps/rev, motor port #1
+        self.sm_x.setSpeed(MAX_STEPS_X)                       # 5 RPM
         self.current_x_steps = 0
 
         # Stepper motor 2
         self.sm_y = self.mh.getStepper(200, 2)      # 200 steps/rev, motor port #2
-        self.sm_y.setSpeed(5)                       # 5 RPM
+        self.sm_y.setSpeed(MAX_STEPS_Y)                       # 5 RPM
         self.current_y_steps = 0
 
         # Relay
@@ -164,6 +164,7 @@ class StepMotor():
             StepMotor.move_backward(self.sm_y, 5)
         else:
             StepMotor.move_forward(self.sm_y, 5)
+        print("down")
     
     
     def interactive(self):
@@ -218,7 +219,7 @@ class StepMotor():
         :param steps:
         :return:
         """
-        motor.step(steps, Adafruit_MotorHAT.FORWARD,  Adafruit_MotorHAT.INTERLEAVE)
+        motor.step(steps, Adafruit_MotorHAT.FORWARD,  Adafruit_MotorHAT.DOUBLE)
 
     @staticmethod
     def move_backward(motor, steps):
@@ -228,7 +229,7 @@ class StepMotor():
         :param steps:
         :return:
         """
-        motor.step(steps, Adafruit_MotorHAT.BACKWARD, Adafruit_MotorHAT.INTERLEAVE)
+        motor.step(steps, Adafruit_MotorHAT.BACKWARD, Adafruit_MotorHAT.DOUBLE)
 
     def __turn_off_motors(self):
         """
